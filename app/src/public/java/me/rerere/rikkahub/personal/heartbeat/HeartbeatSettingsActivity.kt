@@ -117,7 +117,7 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                             ),
                             title = {
                                 Text(
-                                    text = stringResource(R.string.heartbeat_settings_title),
+                                    text = "自动任务中心",
                                     style = MaterialTheme.typography.headlineMedium,
                                 )
                             },
@@ -185,6 +185,7 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                         HeartbeatExpandableSection(stringResource(R.string.sentinel_diagnostics_title)) {
                             SentinelDiagnosticsSection(sentinelDiagnostics, sentinelState, assistantStore.readRegularTriggerAt(), storedConfig.sentinel.enabled)
                         }
+                        Text("任务指令 · 当前角色的自动唤醒提示词", style = MaterialTheme.typography.titleMedium)
                         HeartbeatGlassSection {
                             Text(
                                 text = stringResource(R.string.heartbeat_prompt_label),
@@ -209,6 +210,37 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                             )
                         }
 
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Button(
+                                onClick = {
+                                    assistantStore.update(draft.copy(assistantId = currentAssistantId))
+                                    HeartbeatScheduler.scheduleNext(this@HeartbeatSettingsActivity, draft.copy(assistantId = currentAssistantId))
+                                    if (draft.enabled) {
+                                        requestExactAlarmPermissionIfNeeded()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(stringResource(R.string.heartbeat_save))
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    assistantStore.update(draft.copy(assistantId = currentAssistantId))
+                                    HeartbeatScheduler.triggerNow(
+                                        context = this@HeartbeatSettingsActivity,
+                                        assistantId = currentAssistantId,
+                                    )
+                                },
+                                enabled = draft.enabled,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(stringResource(R.string.heartbeat_trigger_now))
+                            }
+                        }
+                        HeartbeatExpandableSection("高级设置 · 屏幕哨兵与运行参数") {
                         SentinelSettingsSection(
                             config = draft, settings = settings, assistant = currentAssistant, state = sentinelState,
                             onChange = { updated ->
@@ -263,36 +295,6 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                             Text(stringResource(R.string.heartbeat_tool_policy_note))
                         }
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Button(
-                                onClick = {
-                                    assistantStore.update(draft.copy(assistantId = currentAssistantId))
-                                    HeartbeatScheduler.scheduleNext(this@HeartbeatSettingsActivity, draft.copy(assistantId = currentAssistantId))
-                                    if (draft.enabled) {
-                                        requestExactAlarmPermissionIfNeeded()
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(stringResource(R.string.heartbeat_save))
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    assistantStore.update(draft.copy(assistantId = currentAssistantId))
-                                    HeartbeatScheduler.triggerNow(
-                                        context = this@HeartbeatSettingsActivity,
-                                        assistantId = currentAssistantId,
-                                    )
-                                },
-                                enabled = draft.enabled,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(stringResource(R.string.heartbeat_trigger_now))
-                            }
-                        }
                         HeartbeatGlassSection {
                             Text(
                                 text = stringResource(R.string.heartbeat_read_only_test_title),
@@ -320,6 +322,8 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                                 Text(stringResource(R.string.heartbeat_read_only_test))
                             }
                         }
+                        }
+
                     }
                 }
             }
