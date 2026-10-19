@@ -197,7 +197,7 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                                 onValueChange = { draft = draft.copy(heartbeatPrompt = it) },
                                 placeholder = {
                                     Text(
-                                        text = stringResource(if (draft.sentinel.enabled) R.string.sentinel_prompt_example else R.string.heartbeat_prompt_placeholder),
+                                        text = stringResource(R.string.heartbeat_prompt_placeholder),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
                                     )
                                 },
@@ -240,25 +240,7 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                                 Text(stringResource(R.string.heartbeat_trigger_now))
                             }
                         }
-                        Text("屏幕哨兵 · 主要功能", style = MaterialTheme.typography.titleLarge)
-                        Text("授权屏幕观察后，角色可根据画面变化判断是否需要主动回应。")
-                        SentinelSettingsSection(
-                            config = draft, settings = settings, assistant = currentAssistant, state = sentinelState,
-                            onChange = { updated ->
-                                val changedEnabled = updated.sentinel.enabled != draft.sentinel.enabled
-                                val changedPrivacy = updated.sentinel.blockedPackages != draft.sentinel.blockedPackages
-                                draft = updated
-                                if (changedEnabled || changedPrivacy) {
-                                    assistantStore.update(updated.copy(assistantId = currentAssistantId))
-                                    HeartbeatScheduler.scheduleNext(this@HeartbeatSettingsActivity, updated.copy(assistantId = currentAssistantId), preserveRegularPlan = !changedEnabled)
-                                }
-                            },
-                            onResumeObservation = {
-                                assistantStore.update(draft.copy(assistantId = currentAssistantId))
-                                assistantStore.updateSentinelState { it.copy(pauseReason = null).invalidate() }
-                            },
-                        )
-                        HeartbeatExpandableSection("高级设置 · 运行参数与测试") {
+                        HeartbeatExpandableSection("高级设置 · 自动唤醒参数") {
                         HeartbeatExpandableSection(stringResource(R.string.heartbeat_runtime_settings_title)) {
                             NumberField(
                                 label = stringResource(R.string.heartbeat_min_interval),
