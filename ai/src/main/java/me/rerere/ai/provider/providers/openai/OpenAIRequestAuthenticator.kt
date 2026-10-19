@@ -4,6 +4,7 @@ import me.rerere.ai.provider.OpenAIAuthType
 import me.rerere.ai.provider.OpenAICodexCredentials
 import me.rerere.ai.provider.OPENAI_CODEX_BASE_URL
 import me.rerere.ai.provider.ProviderSetting
+import me.rerere.ai.provider.apiKeysForRequests
 import me.rerere.ai.util.KeyRoulette
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -23,7 +24,7 @@ internal class OpenAIRequestAuthenticator(
     ): Request.Builder {
         return when (providerSetting.authType) {
             OpenAIAuthType.API_KEY -> {
-                val key = keyRoulette.next(providerSetting.apiKey, providerSetting.id.toString())
+                val key = keyRoulette.next(providerSetting.apiKeysForRequests(), providerSetting.id.toString())
                 builder.header("Authorization", "Bearer $key")
             }
 
