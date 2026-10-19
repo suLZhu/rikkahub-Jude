@@ -240,7 +240,8 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                                 Text(stringResource(R.string.heartbeat_trigger_now))
                             }
                         }
-                        HeartbeatExpandableSection("高级设置 · 屏幕哨兵与运行参数") {
+                        Text("屏幕哨兵 · 主要功能", style = MaterialTheme.typography.titleLarge)
+                        Text("授权屏幕观察后，角色可根据画面变化判断是否需要主动回应。")
                         SentinelSettingsSection(
                             config = draft, settings = settings, assistant = currentAssistant, state = sentinelState,
                             onChange = { updated ->
@@ -257,6 +258,7 @@ class HeartbeatSettingsActivity : ComponentActivity() {
                                 assistantStore.updateSentinelState { it.copy(pauseReason = null).invalidate() }
                             },
                         )
+                        HeartbeatExpandableSection("高级设置 · 运行参数与测试") {
                         HeartbeatExpandableSection(stringResource(R.string.heartbeat_runtime_settings_title)) {
                             NumberField(
                                 label = stringResource(R.string.heartbeat_min_interval),
