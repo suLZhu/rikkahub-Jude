@@ -25,7 +25,7 @@ class HeartbeatScheduleTool(
         name = NAME,
         description = """
             Control when the private heartbeat wakes up. This tool is available in normal chat only.
-            Use action=set to replace the current plan, action=status to inspect it, or action=cancel to clear it.
+            Use action=set to add an independent plan, action=status to list all plans, or action=cancel to remove one by task_id (or all tasks if omitted).
             Set trigger_type=once for a one-time plan. For mode=at provide an ISO timestamp in at. For
             mode=interval provide interval_minutes; count creates that many one-time future wakes. For
             trigger_type=recurring and mode=interval, the heartbeat repeats at that interval. For
@@ -50,6 +50,10 @@ class HeartbeatScheduleTool(
                             add("status")
                             add("cancel")
                         })
+                    })
+                    put("task_id", buildJsonObject {
+                        put("type", "string")
+                        put("description", "Task identifier returned by set/status; provide it to cancel only one task")
                     })
                     put("mode", buildJsonObject {
                         put("type", "string")
@@ -117,13 +121,19 @@ class HeartbeatScheduleTool(
             "status" -> listOf(resultPayload(statusPayload()))
             "cancel" -> {
                 val scheduleStore = HeartbeatScheduleStore(context, assistantId?.toString())
-                if (scheduleStore.read() != null) {
+                val taskId = arguments["task_id"]?.jsonPrimitive?.contentOrNull
+                val cancelled = if (taskId == null) {
+                    val hadTasks = scheduleStore.list().isNotEmpty()
                     scheduleStore.clear()
+                    hadTasks
+                } else {
+                    scheduleStore.remove(taskId)
                 }
                 HeartbeatScheduler.sync(context)
                 listOf(resultPayload(buildJsonObject {
                     put("success", true)
-                    put("cancelled", true)
+                    put("cancelled", cancelled)
+                    taskId?.let { put("task_id", it) }
                 }))
             }
             else -> error("action must be set, status, or cancel")
@@ -150,12 +160,13 @@ class HeartbeatScheduleTool(
             request = request,
             assistantId = assistantId?.toString(),
         )
-        HeartbeatScheduleStore(context).replace(plan)
+        val taskId = HeartbeatScheduleStore(context, assistantId?.toString()).add(plan)
         HeartbeatScheduler.sync(context)
         val payload = buildJsonObject {
             statusPayload().forEach { (key, value) -> put(key, value) }
             put("success", true)
-            put("replaced", true)
+            put("added", true)
+            put("task_id", taskId)
             put(
                 "trigger_type",
                 if (plan.repeatIntervalMinutes != null || plan.recurrence != null) {
@@ -171,30 +182,26 @@ class HeartbeatScheduleTool(
     }
 
     private fun statusPayload() = buildJsonObject {
-        val plan = HeartbeatScheduleStore(context).readForAssistant(assistantId?.toString())
+        val entries = HeartbeatScheduleStore(context, assistantId?.toString()).list()
         val configStore = HeartbeatConfigStore(context)
         val enabled = assistantId?.let { configStore.readForAssistant(it.toString()).enabled } == true
         configStore.close()
         put("heartbeat_enabled", enabled)
-        put("scheduled", plan != null)
-        if (plan != null) {
-            put(
-                "trigger_type",
-                if (plan.repeatIntervalMinutes != null || plan.recurrence != null) {
-                    HeartbeatSchedulePlanner.TRIGGER_RECURRING
-                } else {
-                    HeartbeatSchedulePlanner.TRIGGER_ONCE
-                },
-            )
-            put("assistant_id", plan.assistantId)
-            put("next_wake_at_ms", plan.wakeAtMillis.minOrNull() ?: 0L)
-            put("wake_times_ms", buildJsonArray {
-                plan.wakeAtMillis.forEach(::add)
-            })
-            plan.repeatIntervalMinutes?.let { put("repeat_interval_minutes", it) }
-            plan.recurrence?.let { put("recurrence", it) }
-            plan.recurrenceTimeMinutes?.let { put("time_minutes", it) }
-        }
+        put("scheduled", entries.isNotEmpty())
+        put("task_count", entries.size)
+        put("tasks", buildJsonArray {
+            entries.forEach { entry ->
+                add(buildJsonObject {
+                    put("task_id", entry.id)
+                    put("assistant_id", entry.plan.assistantId)
+                    put("wake_times_ms", buildJsonArray { entry.plan.wakeAtMillis.forEach(::add) })
+                    entry.plan.repeatIntervalMinutes?.let { put("repeat_interval_minutes", it) }
+                    entry.plan.recurrence?.let { put("recurrence", it) }
+                    entry.plan.recurrenceTimeMinutes?.let { put("time_minutes", it) }
+                })
+            }
+        })
+        entries.flatMap { it.plan.wakeAtMillis }.minOrNull()?.let { put("next_wake_at_ms", it) }
     }
 
     private fun resultPayload(payload: kotlinx.serialization.json.JsonObject): UIMessagePart.Text =
