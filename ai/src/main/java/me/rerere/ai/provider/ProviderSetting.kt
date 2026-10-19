@@ -82,6 +82,8 @@ sealed class ProviderSetting {
         @Transient override val description: @Composable (() -> Unit) = {},
         @Transient override val shortDescription: @Composable (() -> Unit) = {},
         var apiKey: String = "",
+        var apiKeyPoolEnabled: Boolean = false,
+        var apiKeyPool: List<String> = emptyList(),
         var baseUrl: String = "https://api.openai.com/v1",
         var chatCompletionsPath: String = "/chat/completions",
         var useResponseApi: Boolean = false,
@@ -146,6 +148,8 @@ sealed class ProviderSetting {
         @Transient override val description: @Composable (() -> Unit) = {},
         @Transient override val shortDescription: @Composable (() -> Unit) = {},
         var apiKey: String = "",
+        var apiKeyPoolEnabled: Boolean = false,
+        var apiKeyPool: List<String> = emptyList(),
         var baseUrl: String = "https://generativelanguage.googleapis.com/v1beta",
         var vertexAI: Boolean = false,
         var useServiceAccount: Boolean = false,
@@ -211,6 +215,8 @@ sealed class ProviderSetting {
         @Transient override val description: @Composable (() -> Unit) = {},
         @Transient override val shortDescription: @Composable (() -> Unit) = {},
         var apiKey: String = "",
+        var apiKeyPoolEnabled: Boolean = false,
+        var apiKeyPool: List<String> = emptyList(),
         var baseUrl: String = "https://api.anthropic.com/v1",
         var promptCaching: Boolean = false,
         var promptCacheTtl: ClaudePromptCacheTtl = ClaudePromptCacheTtl.FIVE_MINUTES,
@@ -269,4 +275,12 @@ sealed class ProviderSetting {
             )
         }
     }
+}
+
+ 
+/** Returns the configured key pool in the format accepted by KeyRoulette. */
+fun ProviderSetting.apiKeysForRequests(): String = when (this) {
+    is ProviderSetting.OpenAI -> if (apiKeyPoolEnabled && apiKeyPool.isNotEmpty()) apiKeyPool.joinToString("\n") else apiKey
+    is ProviderSetting.Google -> if (apiKeyPoolEnabled && apiKeyPool.isNotEmpty()) apiKeyPool.joinToString("\n") else apiKey
+    is ProviderSetting.Claude -> if (apiKeyPoolEnabled && apiKeyPool.isNotEmpty()) apiKeyPool.joinToString("\n") else apiKey
 }
