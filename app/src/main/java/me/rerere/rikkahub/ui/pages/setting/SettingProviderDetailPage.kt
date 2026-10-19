@@ -83,6 +83,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastFilter
@@ -250,6 +252,87 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
     }
 }
 
+
+@Composable
+private fun ProviderApiKeyPool(
+    provider: ProviderSetting,
+    onEdit: (ProviderSetting) -> Unit,
+) {
+    if (provider !is ProviderSetting.OpenAI &&
+        provider !is ProviderSetting.Google &&
+        provider !is ProviderSetting.Claude
+    ) return
+
+    val enabled = when (provider) {
+        is ProviderSetting.OpenAI -> provider.apiKeyPoolEnabled
+        is ProviderSetting.Google -> provider.apiKeyPoolEnabled
+        is ProviderSetting.Claude -> provider.apiKeyPoolEnabled
+    }
+    val keys = when (provider) {
+        is ProviderSetting.OpenAI -> provider.apiKeyPool
+        is ProviderSetting.Google -> provider.apiKeyPool
+        is ProviderSetting.Claude -> provider.apiKeyPool
+    }
+    var showKeys by remember(provider.id) { mutableStateOf(false) }
+    var importedText by remember(provider.id, provider::class) { mutableStateOf(keys.joinToString("\n")) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("API 密钥池", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "同一供应商添加多把密钥；启用后通过现有轮换逻辑选择密钥。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { value ->
+                        onEdit(when (provider) {
+                            is ProviderSetting.OpenAI -> provider.copy(apiKeyPoolEnabled = value)
+                            is ProviderSetting.Google -> provider.copy(apiKeyPoolEnabled = value)
+                            is ProviderSetting.Claude -> provider.copy(apiKeyPoolEnabled = value)
+                        })
+                    },
+                )
+            }
+            OutlinedTextField(
+                value = importedText,
+                onValueChange = { text ->
+                    importedText = text
+                    val parsed = text.split(Regex("[\\n\\r,;]+"))
+                        .map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+                    onEdit(when (provider) {
+                        is ProviderSetting.OpenAI -> provider.copy(apiKeyPool = parsed)
+                        is ProviderSetting.Google -> provider.copy(apiKeyPool = parsed)
+                        is ProviderSetting.Claude -> provider.copy(apiKeyPool = parsed)
+                    })
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("API Keys（每行一把，也支持逗号分隔）") },
+                supportingText = {
+                    Text("已配置 ${keys.size} 把密钥；关闭开关时仍使用原来的单密钥。")
+                },
+                minLines = 3,
+                maxLines = 6,
+                visualTransformation = if (showKeys) VisualTransformation.None else PasswordVisualTransformation(),
+            )
+            TextButton(onClick = { showKeys = !showKeys }) {
+                Text(if (showKeys) "隐藏密钥" else "显示密钥")
+            }
+        }
+    }
+}
+
 @Composable
 private fun SettingProviderConfigPage(
     provider: ProviderSetting,
@@ -283,6 +366,11 @@ private fun SettingProviderConfigPage(
             )
             ProviderBalanceText(providerSetting = provider, style = MaterialTheme.typography.labelSmall)
         }
+
+        ProviderApiKeyPool(
+            provider = internalProvider,
+            onEdit = { internalProvider = it },
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
