@@ -51,17 +51,9 @@ object LocalBuildIntegration {
     }
 
     fun additionalTools(context: Context, assistantId: Uuid?): List<Tool> {
-        val assistantKey = assistantId?.toString() ?: return emptyList()
-        val store = HeartbeatConfigStore(context, assistantKey)
-        return try {
-            if (store.read().enabled) {
-                listOf(HeartbeatScheduleTool(context, assistantId).tool)
-            } else {
-                emptyList()
-            }
-        } finally {
-            store.close()
-        }
+        // Keep task management available even when background heartbeat is disabled.
+        // The tool can report the master switch state; actual background execution remains gated.
+        return assistantId?.let { listOf(HeartbeatScheduleTool(context, it).tool) } ?: emptyList()
     }
 
     fun additionalConversationModeTools(context: Context, assistantId: Uuid?, conversationId: Uuid?): List<Tool> = emptyList()
